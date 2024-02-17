@@ -1,53 +1,66 @@
-// dependencies
+// Dependencies
 const { OpenAI } = require('langchain/llms/openai');
-const { PromptTemplate } = require("langchain/prompts"); // Step 1: Require the PromptTemplate module
+const { PromptTemplate } = require("langchain/prompts");
+const { StructuredOutputParser } = require("langchain/output_parsers");
 const inquirer = require('inquirer');
 require('dotenv').config();
 
-// Creates and stores a wrapper for the OpenAI package along with basic configuration
+// Initialize OpenAI model with API key and configuration
 const model = new OpenAI({
-  openAIApiKey: process.env.OPENAI_API_KEY, 
-  temperature: 0,
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  temperature: 0.5, // Adjusted temperature for creativity
   model: 'gpt-3.5-turbo'
 });
 
-// Step 2: Instantiate a PromptTemplate object
-const prompt = new PromptTemplate({
-  template: "You are a JavaScript expert and will answer the user’s coding questions as thoroughly as possible.\n{question}",
-  inputVariables: ["question"],
+// Instantiate a StructuredOutputParser for output formatting
+const parser = StructuredOutputParser.fromNamesAndDescriptions({
+  code: "Code explanation",
+  explanation: "Improvement suggestions and generated documentation",
 });
 
+// Define format instructions for the parser
+const formatInstructions = parser.getFormatInstructions();
+
+// PromptTemplate for Salesforce LWC queries
+const prompt = new PromptTemplate({
+  template: "Provide detailed information, instructions, or best practices for the following Salesforce Lightning Web Component question:\n{userQuery}\n",
+  inputVariables: ["userQuery"]
+});
+
+// Log the model configuration to console for verification
 console.log({model});
 
-// Uses the instantiated OpenAI wrapper, model, and makes a call based on input from inquirer
-const promptFunc = async (input) => {
+// Function to process code snippet input from the user
+const promptFunc = async (userQuery) => {
   try {
-    // Step 3: Format the prompt with the user's input
+    // Format the prompt with the user's question about Salesforce LWC
     const formattedPrompt = await prompt.format({
-      question: input
+      userQuery: userQuery
     });
 
-    // Step 4: Use the formatted prompt for the OpenAI call
+    // Call the OpenAI model with the formatted prompt
     const res = await model.call(formattedPrompt);
-    console.log(res);
-  }
-  catch (err) {
+
+    // Directly log the AI response
+    console.log(JSON.stringify(res, null, 2));
+  } catch (err) {
     console.error(err);
   }
 };
 
-// Initialization function that uses inquirer to prompt the user and returns a promise. It takes the user input and passes it through the call method
+// Initialization function to collect user input for code snippet
 const init = () => {
   inquirer.prompt([
     {
       type: 'input',
-      name: 'name',
-      message: 'Ask a coding question:',
-    },
+      name: 'userQuery',
+      message: 'What do you want to know about Salesforce Lightning Web Components?',
+    }
   ]).then((inquirerResponse) => {
-    promptFunc(inquirerResponse.name)
+    // Process the provided query through our updated function
+    promptFunc(inquirerResponse.userQuery);
   });
 };
 
-// Calls the initialization function and starts the script
+// Start the application
 init();
